@@ -5,7 +5,7 @@ cd $(dirname $(readlink -f $0))
 filename="$(date +%F__%H:%M:%S).png"
 
 wget -q -O"${filename}" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
-find *.png -mtime +1 -exec rm {} \;
+find *.png -mmin +60 -exec rm {} \;
 
 images=($(ls *.png))
 
