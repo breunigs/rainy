@@ -11,7 +11,7 @@ find *.png -mmin +120 -exec rm {} \;
 images=($(ls *.png))
 
 cat > index.html <<ENDOFHTML
-<input id="slider" type="range" min="1" max="${#images[@]}" list="imgs" type="imgs"/>
+<input id="slider" type="range" min="1" max="${#images[@]}" list="imgs" type="imgs"/> (~2h available. yellow crosses = lightning)
 ENDOFHTML
 
 COUNTER=0
@@ -24,6 +24,11 @@ done
 
 
 cat >> index.html <<ENDOFHTML
+<style>
+input { width: 20em }
+img { height: 90%; max-height: 703px; }
+</style>
+
 <script>
 var slider = document.getElementById('slider');
 
@@ -70,8 +75,7 @@ showImg(Math.max(1, ${#images[@]}-20));
 
 
 </script>
-<style>
-input { width: 20em }
-img { height: 90%; max-height: 703px; }
-</style>
+
+
+<a href="http://pattern.zmaw.de/index.php?id=2106">Hard work was done by PATTERN</a>
 ENDOFHTML
