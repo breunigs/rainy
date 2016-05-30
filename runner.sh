@@ -6,7 +6,7 @@ filename="$(date +%F__%H:%M:%S).png"
 
 wget -q -O"${filename}" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
 optipng -quiet -o7 "${filename}"&
-find *.png -mmin +60 -exec rm {} \;
+find *.png -mmin +120 -exec rm {} \;
 
 images=($(ls *.png))
 
