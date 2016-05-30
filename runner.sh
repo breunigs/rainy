@@ -27,14 +27,27 @@ cat >> index.html <<ENDOFHTML
 <script>
 var slider = document.getElementById('slider');
 
+function preloadImg(num) {
+  var img = document.getElementById('img' + num);
+  if(img && !img.complete) {
+    console.log("preloading: " + num);
+    var t=new Image();
+    t.src=img.src;
+  }
+}
+
 function showImg(num) {
   console.log("setting img=" + num)
   slider.value=num;
   slider.dispatchEvent(new Event('input'));
+  preloadImg((num*1)+1);
 }
 
 var play = setInterval(function() {
-  showImg((slider.value*1) + 1);
+  var cur = slider.value*1;
+  // wait until current image could be loaded
+  if(!document.getElementById('img' + cur).complete) return;
+  showImg(cur + 1);
   if(slider.value == slider.max) {
     clearInterval(play);
   }
