@@ -72,6 +72,6 @@ showImg(Math.max(1, ${#images[@]}-20));
 </script>
 <style>
 input { width: 20em }
-img { height: 90% }
+img { height: 90%; max-height: 703px; }
 </style>
 ENDOFHTML
