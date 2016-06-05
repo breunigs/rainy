@@ -7,7 +7,9 @@ filename="$(date +%s).png"
 wget -q -O"${filename}" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
 cwebp -quiet -preset picture -q 80 -m 5 -af "${filename}" -o "${filename}.webp"
 pngquant --ext .png --force -Q 60 "${filename}"&
+
 find *.png -mmin +120 -exec rm {} \;
+find *.png.webp -mmin +120 -exec rm {} \;&
 
 images=($(ls *.png))
 
