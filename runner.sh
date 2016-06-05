@@ -5,20 +5,28 @@ cd $(dirname $(readlink -f $0))
 filename="$(date +%s).png"
 
 wget -q -O"${filename}" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
+cwebp -quiet -preset picture -q 80 -m 5 -af "${filename}" -o "${filename}.webp"
 pngquant --ext .png --force -Q 60 "${filename}"&
 find *.png -mmin +120 -exec rm {} \;
 
 images=($(ls *.png))
 
 cat > index.html <<ENDOFHTML
-<input id="slider" type="range" min="1" max="${#images[@]}" list="imgs" type="imgs"/> (~2h available. yellow crosses = lightning)
+<input id="slider" type="range" min="1" max="${#images[@]}" list="imgs" type="imgs"/>
+(~2h available. yellow crosses = lightning)
+<a href="http://pattern.zmaw.de/index.php?id=2106">Hard work was done by PATTERN</a>
+<br/>
 ENDOFHTML
 
 COUNTER=0
 for i in "${images[@]}"; do
 let COUNTER=COUNTER+1
 cat >> index.html <<ENDOFHTML
-    <img src="${i}" id="img${COUNTER}" style="display:none"/>
+  <picture id="img${COUNTER}" class="hidden">
+    <source srcset="${i}.webp" type="image/webp">
+    <img src="${i}">
+  </picture>
+
 ENDOFHTML
 done
 
@@ -26,7 +34,13 @@ done
 cat >> index.html <<ENDOFHTML
 <style>
 input { width: 20em }
-img { height: 90%; max-height: 703px; }
+img, source { height: 100% }
+picture { height: 90%; max-height: 703px; }
+#slider { zoom: 150% }
+
+.hidden { display: none }
+.show { display: block }
+.preload { visibility: hidden; width: 0px; height: 0px; overflow: hidden; }
 </style>
 
 <script>
@@ -34,11 +48,7 @@ var slider = document.getElementById('slider');
 
 function preloadImg(num) {
   var img = document.getElementById('img' + num);
-  if(img && !img.complete) {
-    console.log("preloading: " + num);
-    var t=new Image();
-    t.src=img.src;
-  }
+  if(img) img.className = 'preload';
 }
 
 function showImg(num) {
@@ -50,21 +60,19 @@ function showImg(num) {
 
 var play = setInterval(function() {
   var cur = slider.value*1;
-  // wait until current image could be loaded
-  if(!document.getElementById('img' + cur).complete) return;
-  showImg(cur + 1);
   if(slider.value == slider.max) {
-    clearInterval(play);
+    return clearInterval(play);
   }
+  showImg(cur + 1);
 }, 200);
 
 slider.addEventListener("input", function() {
-  var elems = document.getElementsByTagName('img');
+  var elems = document.getElementsByTagName('picture');
   for(var i = 0; i < elems.length; i++) {
-    elems[i].style.display='none';
+    elems[i].className = 'hidden';
   }
   var active=document.getElementById('img' + slider.value);
-  active.style.display = 'block';
+  active.className = 'show';
 });
 
 slider.addEventListener("mousedown", function() {
@@ -75,7 +83,4 @@ showImg(Math.max(1, ${#images[@]}-20));
 
 
 </script>
-
-
-<a href="http://pattern.zmaw.de/index.php?id=2106">Hard work was done by PATTERN</a>
 ENDOFHTML
