@@ -1,11 +1,28 @@
 #!/bin/bash
 
+# Automatically serve webp images if available:
+# nginx.conf:
+# http {
+#   map $http_accept $webp_suffix {
+#     default   "";
+#     "~*webp"  ".webp";
+#   }
+# }
+#
+# site.conf:
+# server {
+#   location ~* ^.+\.(png|jpg)$ {
+#     add_header Vary Accept;
+#     try_files $uri$webp_suffix $uri =404;
+#   }
+# }
+
 cd $(dirname $(readlink -f $0))
 
 filename="$(date +%s).png"
 
 wget -q -O"${filename}" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
-cwebp -quiet -preset picture -q 80 -m 5 -af "${filename}" -o "${filename}.webp"
+cwebp -quiet -preset picture -q 75 -m 5 -af "${filename}" -o "${filename}.webp"
 pngquant --ext .png --force -Q 60 "${filename}"&
 
 find *.png -mmin +120 -exec rm {} \;
@@ -14,67 +31,86 @@ find *.png.webp -mmin +120 -exec rm {} \;&
 images=($(ls *.png))
 
 cat > index.html <<ENDOFHTML
-<input id="slider" type="range" min="1" max="${#images[@]}" list="imgs" type="imgs"/>
-(~2h available. yellow crosses = lightning)
-<a href="http://pattern.zmaw.de/index.php?id=2106">Hard work was done by PATTERN</a>
-<br/>
+<html>
+<head>
+  <style>
+  input { width: 20em }
+  img { height: 90%; max-height: 703px; position: absolute; top: 50px; left: 5px; }
+  #slider { zoom: 150% }
+
+  .hidden { display: none }
+  .preload { opacity: 50%; }
+  </style>
+</head>
+
+<body>
+  <input id="slider" type="range" min="1" max="${#images[@]}" list="imgs" type="imgs"/>
+  (~2h available. yellow crosses = lightning)
+  <a href="http://pattern.zmaw.de/index.php?id=2106">Hard work was done by PATTERN</a>
+  <br/>
 ENDOFHTML
 
 COUNTER=0
 for i in "${images[@]}"; do
 let COUNTER=COUNTER+1
 cat >> index.html <<ENDOFHTML
-  <picture id="img${COUNTER}" class="hidden">
-    <source srcset="${i}.webp" type="image/webp">
-    <img src="${i}">
-  </picture>
-
+  <img data-src="${i}" id="img${COUNTER}" class="hidden"/>
 ENDOFHTML
 done
 
 
 cat >> index.html <<ENDOFHTML
-<style>
-input { width: 20em }
-img, source { height: 100% }
-picture { height: 90%; max-height: 703px; }
-#slider { zoom: 150% }
-
-.hidden { display: none }
-.show { display: block }
-.preload { visibility: hidden; width: 0px; height: 0px; overflow: hidden; }
-</style>
-
 <script>
 var slider = document.getElementById('slider');
+var body = document.getElementsByTagName('body')[0];
 
-function preloadImg(num) {
-  var img = document.getElementById('img' + num);
-  if(img) img.className = 'preload';
+function preloadAfter(num) {
+  var next = (num*1)+1;
+
+  var img = document.getElementById('img' + next);
+  if(img && img.src == '')  img.src = img.dataset.src;
 }
 
 function showImg(num) {
   console.log("setting img=" + num)
   slider.value=num;
   slider.dispatchEvent(new Event('input'));
-  preloadImg((num*1)+1);
 }
 
 var play = setInterval(function() {
-  var cur = slider.value*1;
   if(slider.value == slider.max) {
     return clearInterval(play);
   }
+
+  var cur = slider.value*1;
+
+  if(!document.getElementById('img' + cur).complete) {
+    console.log('not complete, waiting for current img');
+    preloadAfter(cur);
+    return;
+  }
+
+  if(!document.getElementById('img' + (cur+1)).complete) {
+    console.log('not complete, waiting for next img to preload');
+    preloadAfter(cur+1);
+    return;
+  }
+
   showImg(cur + 1);
+  preloadAfter(cur+2);
+  preloadAfter(cur+3);
 }, 200);
 
 slider.addEventListener("input", function() {
-  var elems = document.getElementsByTagName('picture');
-  for(var i = 0; i < elems.length; i++) {
-    elems[i].className = 'hidden';
+  var toHide = document.querySelectorAll('img:not(#img' + slider.value + ')');
+
+  var toShow = document.getElementById('img' + slider.value);
+  if(toShow.src == '') toShow.src = toShow.dataset.src;
+  toShow.className = '';
+
+  for(var i = 0; i < toHide.length; i++) {
+    toHide[i].className = 'hidden'
   }
-  var active=document.getElementById('img' + slider.value);
-  active.className = 'show';
 });
 
 slider.addEventListener("mousedown", function() {
@@ -83,6 +119,7 @@ slider.addEventListener("mousedown", function() {
 
 showImg(Math.max(1, ${#images[@]}-20));
 
-
 </script>
+</body>
+</html>
 ENDOFHTML
