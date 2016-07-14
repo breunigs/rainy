@@ -115,6 +115,13 @@ slider.addEventListener("input", function() {
 
 slider.addEventListener("mousedown", function() {
   clearInterval(play);
+
+  // allow browser to preload everything
+  var imgs = document.getElementsByTagName('img');
+  for(var i = 0; i < imgs.length; i++) {
+    if(imgs[i].src != '') continue;
+    imgs[i].src = imgs[i].dataset.src;
+  }
 })
 
 showImg(Math.max(1, ${#images[@]}-20));
