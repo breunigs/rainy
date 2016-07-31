@@ -11,7 +11,7 @@
 #
 # site.conf:
 # server {
-#   location ~* ^.+\.(png|jpg)$ {
+#   location ~* ^.+\.(png|jpg|img)$ {
 #     add_header Vary Accept;
 #     try_files $uri$webp_suffix $uri =404;
 #   }
@@ -21,9 +21,16 @@ cd $(dirname $(readlink -f $0))
 
 filename="$(date +%s).png"
 
-wget -q -O"${filename}" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
-cwebp -quiet -preset picture -q 75 -m 5 -af "${filename}" -o "${filename}.webp"
-pngquant --ext .png --force -Q 60 "${filename}"&
+wget -q -O"new.png" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
+
+# create mask and extract changes pixels
+convert "base_uncompressed.img" "new.png" -compose difference -composite -threshold 0 -separate -evaluate-sequence Add mask.png
+convert  "new.png" "mask.png" -alpha off -compose CopyOpacity -composite +compose "${filename}"
+rm "mask.png" "new.png"&
+
+# reduce colors to save space and compress further using webp
+pngquant --ext .png --force -Q 60 "${filename}"
+cwebp -quiet -lossless -m 6 "${filename}" -o "${filename}.webp"
 
 find *.png -mmin +120 -exec rm {} \;
 find *.png.webp -mmin +120 -exec rm {} \;&
@@ -48,6 +55,7 @@ cat > index.html <<ENDOFHTML
   (~2h available. yellow crosses = lightning)
   <a href="http://pattern.zmaw.de/index.php?id=2106">Hard work was done by PATTERN</a>
   <br/>
+  <img src="base.img" id="base"/>
 ENDOFHTML
 
 COUNTER=0
@@ -102,7 +110,7 @@ var play = setInterval(function() {
 }, 200);
 
 slider.addEventListener("input", function() {
-  var toHide = document.querySelectorAll('img:not(#img' + slider.value + ')');
+  var toHide = document.querySelectorAll('img:not(#base):not(#img' + slider.value + ')');
 
   var toShow = document.getElementById('img' + slider.value);
   if(toShow.src == '') toShow.src = toShow.dataset.src;
