@@ -23,14 +23,22 @@ filename="$(date +%s).png"
 
 wget -q -O"new.png" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
 
-# create mask and extract changes pixels
-convert "base_uncompressed.img" "new.png" -compose difference -composite -threshold 0 -separate -evaluate-sequence Add mask.png
-convert  "new.png" "mask.png" -alpha off -compose CopyOpacity -composite +compose "${filename}"
-rm "mask.png" "new.png"&
+if [ "$(md5sum new.png)" = "29720dcbd8cc2e074186ce8c4e617be4" ]; then
+  # If there are too many images that are exactly the same, their software adds a "too many duplicates"
+  # text overlay. This only happends if there are no rain clouds, so we can just make this an empty
+  # image, which looks better.
+  cp "empty.img" "${filename}"
+  cp "empty.img.webp" "${filename}.webp"
+else
+  # create mask and extract changes pixels
+  convert "base_uncompressed.img" "new.png" -compose difference -composite -threshold 0 -separate -evaluate-sequence Add mask.png
+  convert  "new.png" "mask.png" -alpha off -compose CopyOpacity -composite +compose "${filename}"
+  rm "mask.png" "new.png"&
 
-# reduce colors to save space and compress further using webp
-pngquant --ext .png --force -Q 60 "${filename}"
-cwebp -quiet -lossless -m 6 "${filename}" -o "${filename}.webp"
+  # reduce colors to save space and compress further using webp
+  pngquant --ext .png --force -Q 60 "${filename}"
+  cwebp -quiet -lossless -m 6 "${filename}" -o "${filename}.webp"
+fi
 
 find *.png -mmin +120 -exec rm {} \;
 find *.png.webp -mmin +120 -exec rm {} \;&
