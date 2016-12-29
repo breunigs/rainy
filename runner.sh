@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# needed software:
+# apt install bash coreutils imagemagick pngquant webp
+
 # Automatically serve webp images if available:
 # nginx.conf:
 # http {
