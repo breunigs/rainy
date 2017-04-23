@@ -48,6 +48,11 @@ function find(array, timestamp) {
   }) || array[array.length-1];
 }
 
+function allLoaded() {
+  var imgs = document.querySelectorAll('.leaflet-image-layer');
+  return [].slice.call(imgs).every(function(x) { return x.complete });
+}
+
 function showImg(num) {
   slider.value=num;
   slider.dispatchEvent(new Event('input'));
@@ -68,6 +73,8 @@ var play = setInterval(function() {
   if(slider.value == slider.max) {
     return clearInterval(play);
   }
+
+  if(!allLoaded()) return;
 
   var cur = slider.value*1;
   showImg(cur + 1);
