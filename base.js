@@ -26,7 +26,7 @@ map.addLayer(L.imageOverlay("/" + files_all[files_all.length-1], boundsAll, {opa
 var slider = L.control();
 slider.onAdd = function(map) {
   this._div = L.DomUtil.create('div', 'slidercont');
-  this._div.innerHTML = '<input id="slider" type="range" min="0" max="'+(maxImages-1)+'" value="'+(startIndex)+'" list="imgs" type="imgs"/>'
+  this._div.innerHTML = '<input id="slider" type="range" min="0" max="'+(maxImages-1)+'" value="'+(startIndex)+'" list="imgs" type="imgs"/><br/><span id="timestamp"></span>'
   return this._div;
 }
 slider.addTo(map);
@@ -59,8 +59,11 @@ function showImg(num) {
 }
 
 var slider = document.getElementById("slider");
+var timestamp = document.getElementById("timestamp");
 slider.addEventListener("input", function() {
   var time = start + interval*slider.value;
+  var ago = Math.floor((new Date()/1000 - time) / 60);
+  timestamp.innerHTML = "~ " + ago + " min ago";
 
   replace("all", "/" + find(files_all, time));
   // replace("zoom", "/" + find(files_zoom, time));
