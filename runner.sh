@@ -1,151 +1,70 @@
-#!/bin/bash
+#!/bin/sh
 
-# needed software:
-# apt install bash coreutils imagemagick pngquant webp
+# TODO: zoomed images do not get rendered separately anymore, it seems.
+# it should be possible to split inner/outer part, though, to gain better cache
+# efficiency
 
-# Automatically serve webp images if available:
-# nginx.conf:
-# http {
-#   map $http_accept $webp_suffix {
-#     default   "";
-#     "~*webp"  ".webp";
-#   }
-# }
-#
-# site.conf:
-# server {
-#   location ~* ^.+\.(png|jpg|img)$ {
-#     add_header Vary Accept;
-#     try_files $uri$webp_suffix $uri =404;
-#   }
-# }
+set -e
 
 cd $(dirname $(readlink -f $0))
 
-filename="$(date +%s).png"
+suffix="$(date +%s).png"
 
-wget -q -O"new.png" "http://pattern.zmaw.de/fileadmin/user_upload/pattern/radar/lawr_4.png"
-
-if [ "$(md5sum new.png)" = "29720dcbd8cc2e074186ce8c4e617be4" ]; then
-  # If there are too many images that are exactly the same, their software adds a "too many duplicates"
-  # text overlay. This only happends if there are no rain clouds, so we can just make this an empty
-  # image, which looks better.
-  cp "empty.img" "${filename}"
-  cp "empty.img.webp" "${filename}.webp"
-else
-  # create mask and extract changes pixels
-  convert "base_uncompressed.img" "new.png" -compose difference -composite -threshold 0 -separate -evaluate-sequence Add mask.png
-  convert  "new.png" "mask.png" -alpha off -compose CopyOpacity -composite +compose "${filename}"
-  rm "mask.png" "new.png"&
-
-  # reduce colors to save space and compress further using webp
-  pngquant --ext .png --force -Q 60 "${filename}"
-  cwebp -quiet -lossless -m 6 "${filename}" -o "${filename}.webp"
-fi
-
-find *.png -mmin +120 -exec rm {} \;
-find *.png.webp -mmin +120 -exec rm {} \;&
-
-images=($(ls *.png))
-
-cat > index.html <<ENDOFHTML
-<html>
-<head>
-  <style>
-  input { width: 20em }
-  img { height: 90%; max-height: 703px; position: absolute; top: 50px; left: 5px; }
-  #slider { zoom: 150% }
-
-  .hidden { display: none }
-  .preload { opacity: 50%; }
-  </style>
-</head>
-
-<body>
-  <input id="slider" type="range" min="1" max="${#images[@]}" list="imgs" type="imgs"/>
-  (~2h available. yellow crosses = lightning)
-  <a href="http://pattern.zmaw.de/index.php?id=2106">Hard work was done by PATTERN</a>
-  <br/>
-  <img src="base.img" id="base"/>
-ENDOFHTML
-
-COUNTER=0
-for i in "${images[@]}"; do
-let COUNTER=COUNTER+1
-cat >> index.html <<ENDOFHTML
-  <img data-src="${i}" id="img${COUNTER}" class="hidden"/>
-ENDOFHTML
-done
-
-
-cat >> index.html <<ENDOFHTML
-<script>
-var slider = document.getElementById('slider');
-var body = document.getElementsByTagName('body')[0];
-
-function preloadAfter(num) {
-  var next = (num*1)+1;
-
-  var img = document.getElementById('img' + next);
-  if(img && img.src == '')  img.src = img.dataset.src;
+clean_old() {
+  find *.png -mmin +120 -exec rm {} \; || true
+  find *.png.webp -mmin +120 -exec rm {} \; || true
+  find previous_md5_* -mmin +120 -exec rm {} \; || true
 }
 
-function showImg(num) {
-  console.log("setting img=" + num)
-  slider.value=num;
-  slider.dispatchEvent(new Event('input'));
+compress() {
+  pngquant --ext .png --force -Q 60 "${1}"
+  cwebp -quiet -lossless -m 6 "${1}" -o "${1}.webp"
 }
 
-var play = setInterval(function() {
-  if(slider.value == slider.max) {
-    return clearInterval(play);
-  }
+compress_or_discard() {
+  filename="${1}_${suffix}"
+  new_md5=$(md5sum "${filename}" | cut -f1 -d" ")
+  old_md5=$(cat "previous_md5_${1}" || true)
+  if [ "${new_md5}" = "${old_md5}" ]; then
+    # new and old file are equal, just keep using old file
+    rm -f "${1}"
+  else
+    compress "${filename}"
+    echo "${new_md5}" > "previous_md5_${1}"
+  fi
+}
 
-  var cur = slider.value*1;
+list() {
+  ls -1 ${1}_*.png | sort | tr '\n' ' '
+}
 
-  if(!document.getElementById('img' + cur).complete) {
-    console.log('not complete, waiting for current img');
-    preloadAfter(cur);
-    return;
-  }
+get_all() {
+  wget -q -O tmp_all.png "http://37.120.170.199/uploads/pattern_c_hhg.png" || wget -q -O tmp_all.png "https://mi-pub.cen.uni-hamburg.de/fileadmin/files/ninjo/Batch/pattern_c_hhg.png"
+  # XXX: It's important to cut out the middle before comparison, since that changes
+  # more often than the outer part
 
-  if(!document.getElementById('img' + (cur+1)).complete) {
-    console.log('not complete, waiting for next img to preload');
-    preloadAfter(cur+1);
-    return;
-  }
+  # cut out middle part, for which we have a higher resolution
+  # convert tmp_all.png mask_all.img -compose Dst_out -composite -strip "all_${suffix}"
+  # rm -f tmp_all.png&
+  mv tmp_all.png "all_${suffix}"
+  compress_or_discard "all"
+}
 
-  showImg(cur + 1);
-  preloadAfter(cur+2);
-  preloadAfter(cur+3);
-}, 200);
+get_zoom() {
+  wget -q -O "zoom_${suffix}"  "http://37.120.170.199/uploads/pattern_hhg.png"
+  compress_or_discard "zoom"
+}
 
-slider.addEventListener("input", function() {
-  var toHide = document.querySelectorAll('img:not(#base):not(#img' + slider.value + ')');
+clean_old
+get_all&
+# get_zoom& ### broken :(
+cp base.html tmp_index.html&
+wait
 
-  var toShow = document.getElementById('img' + slider.value);
-  if(toShow.src == '') toShow.src = toShow.dataset.src;
-  toShow.className = '';
+files_all=$(list "all")
+sed -i "s/###FILES_ALL###/${files_all}/" tmp_index.html
 
-  for(var i = 0; i < toHide.length; i++) {
-    toHide[i].className = 'hidden'
-  }
-});
+# files_zoom=$(list "zoom")
+# sed -i "s/###FILES_ZOOM###/${files_zoom}/" tmp_index.html
 
-slider.addEventListener("mousedown", function() {
-  clearInterval(play);
-
-  // allow browser to preload everything
-  var imgs = document.getElementsByTagName('img');
-  for(var i = 0; i < imgs.length; i++) {
-    if(imgs[i].src != '') continue;
-    imgs[i].src = imgs[i].dataset.src;
-  }
-})
-
-showImg(Math.max(1, ${#images[@]}-20));
-
-</script>
-</body>
-</html>
-ENDOFHTML
+mv tmp_index.html index.html
