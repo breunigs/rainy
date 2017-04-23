@@ -1,9 +1,5 @@
 #!/bin/sh
 
-# TODO: zoomed images do not get rendered separately anymore, it seems.
-# it should be possible to split inner/outer part, though, to gain better cache
-# efficiency
-
 set -e
 
 cd $(dirname $(readlink -f $0))
@@ -39,32 +35,33 @@ list() {
 }
 
 get_all() {
-  wget -q -O tmp_all.png "http://37.120.170.199/uploads/pattern_c_hhg.png" || wget -q -O tmp_all.png "https://mi-pub.cen.uni-hamburg.de/fileadmin/files/ninjo/Batch/pattern_c_hhg.png"
-  # XXX: It's important to cut out the middle before comparison, since that changes
-  # more often than the outer part
-
-  # cut out middle part, for which we have a higher resolution
-  # convert tmp_all.png mask_all.img -compose Dst_out -composite -strip "all_${suffix}"
-  # rm -f tmp_all.png&
-  mv tmp_all.png "all_${suffix}"
+  # cuts out middle part
+  convert tmp_all.png mask_all.img -compose Dst_out -composite -strip "all_${suffix}"
   compress_or_discard "all"
 }
 
 get_zoom() {
-  wget -q -O "zoom_${suffix}"  "http://37.120.170.199/uploads/pattern_hhg.png"
+  # keeps middle part
+  convert tmp_all.png mask_all.img -compose Dst_in -composite -strip "zoom_${suffix}"
   compress_or_discard "zoom"
 }
 
 clean_old
+
+wget -q -O tmp_all.png "http://37.120.170.199/uploads/pattern_c_hhg.png" || wget -q -O tmp_all.png "https://mi-pub.cen.uni-hamburg.de/fileadmin/files/ninjo/Batch/pattern_c_hhg.png"
+
 get_all&
-# get_zoom& ### broken :(
+get_zoom&
 cp base.html tmp_index.html&
 wait
+
+rm -f tmp_all.png&
+
 
 files_all=$(list "all")
 sed -i "s/###FILES_ALL###/${files_all}/" tmp_index.html
 
-# files_zoom=$(list "zoom")
-# sed -i "s/###FILES_ZOOM###/${files_zoom}/" tmp_index.html
+files_zoom=$(list "zoom")
+sed -i "s/###FILES_ZOOM###/${files_zoom}/" tmp_index.html
 
 mv tmp_index.html index.html

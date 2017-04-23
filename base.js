@@ -14,14 +14,9 @@ var maxImages = 2*60*(60/interval);
 var start = Math.floor(Date.now() / 1000) - maxImages*interval;
 var startIndex = maxImages - 20*(60/interval); // 20 minutes ago
 
-
-// Load Radar image layer
-var boundsAll = [[53.17102800, 9.01568100], [54.09236200, 11.23351900]];
-// TODO: fix bbox. Currently defines circle on n/e/s/w coordinates
-var boundsZoom = [[53.7466, 9.6739], [53.3851, 10.2896]];
-
-map.addLayer(L.imageOverlay("/" + files_all[files_all.length-1], boundsAll, {opacity:0.7}));
-// map.addLayer(L.imageOverlay("/" + files_zoom[files_zoom.length-1], boundsZoom, {opacity:0.7}));
+var bounds = [[53.17102800, 9.01568100], [54.09236200, 11.23351900]];
+map.addLayer(L.imageOverlay("/" + filesAll[filesAll.length-1], bounds, {opacity:0.7}));
+map.addLayer(L.imageOverlay("/" + filesZoom[filesZoom.length-1], bounds, {opacity:0.7}));
 
 var slider = L.control();
 slider.onAdd = function(map) {
@@ -65,8 +60,8 @@ slider.addEventListener("input", function() {
   var ago = Math.floor((new Date()/1000 - time) / 60);
   timestamp.innerHTML = "~ " + ago + " min ago";
 
-  replace("all", "/" + find(files_all, time));
-  // replace("zoom", "/" + find(files_zoom, time));
+  replace("all", "/" + find(filesAll, time));
+  replace("zoom", "/" + find(filesZoom, time));
 });
 
 var play = setInterval(function() {
