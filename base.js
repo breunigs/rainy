@@ -8,8 +8,8 @@ L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=p
   id: 'akio.l35p3fje'
 }).addTo(map);
 
-// new images every 30s, history for two hours
-var interval = 30;
+// new images every 60s, history for two hours
+var interval = 60;
 var maxImages = 2*60*(60/interval);
 var start = Math.floor(Date.now() / 1000) - maxImages*interval;
 var startIndex = maxImages - 20*(60/interval); // 20 minutes ago
