@@ -27,7 +27,7 @@ compress_or_discard() {
   old_md5=$(cat "previous_md5_${1}" || true)
   if [ "${new_md5}" = "${old_md5}" ]; then
     # new and old file are equal, just keep using old file
-    rm -f "${1}"
+    rm -f "${filename}"
   else
     compress "${filename}"
     echo "${new_md5}" > "previous_md5_${1}"
