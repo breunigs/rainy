@@ -8,6 +8,8 @@ L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=p
   id: 'akio.l35p3fje'
 }).addTo(map);
 
+var hash = new L.Hash(map);
+
 // new images every 60s, history for two hours
 var interval = 60;
 var maxImages = 2*60*(60/interval);
