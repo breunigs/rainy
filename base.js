@@ -28,12 +28,12 @@ slider.onAdd = function(map) {
 }
 slider.addTo(map);
 var div = slider.getContainer();
-if (!L.Browser.touch) {
+//if (!L.Browser.touch) {
   L.DomEvent.disableClickPropagation(div);
   L.DomEvent.on(div, 'mousewheel', L.DomEvent.stopPropagation);
-} else {
+//} else {
   L.DomEvent.on(div, 'click', L.DomEvent.stopPropagation);
-}
+//}
 
 function replace(layer, new_image) {
   console.log("Trying to replace: " + layer + " to " + new_image);
