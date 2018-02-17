@@ -48,7 +48,7 @@ get_zoom() {
 
 clean_old
 
-wget -q -O tmp_all.png "http://37.120.170.199/uploads/pattern_c_hhg.png" || wget -q -O tmp_all.png "https://mi-pub.cen.uni-hamburg.de/fileadmin/files/ninjo/Batch/pattern_c_hhg.png"
+wget -q -O tmp_all.png "https://mi-pub.cen.uni-hamburg.de/fileadmin/files/ninjo/Batch/pattern_c_hhg.png"
 
 get_all&
 get_zoom&
