@@ -1,48 +1,106 @@
-var map = L.map('map').setView([53.50000, 10.0], 11);
-L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoiYnJldW5pZ3MiLCJhIjoiY2oxdWplZWl3MDA4bjM0bW81dzdtYm55YyJ9.lHUbRUDgmKBgUCQot8PPsw', {
+var extraAttribution = new mapboxgl.AttributionControl({
+  customAttribution: 'Radar data <a href="http://wetterradar.uni-hamburg.de" target="_blank">PATTERN</a>',
+});
+var geolocation = new mapboxgl.GeolocateControl({
+  positionOptions: { enableHighAccuracy: true },
+  fitBoundsOptions: {maxZoom: 12},
+  trackUserLocation: true
+});
+
+
+mapboxgl.accessToken = 'pk.eyJ1IjoiYnJldW5pZ3MiLCJhIjoiY2oxdWplZWl3MDA4bjM0bW81dzdtYm55YyJ9.lHUbRUDgmKBgUCQot8PPsw';
+var map = new mapboxgl.Map({
+  container: 'map', // container id
+  style: 'mapbox://styles/breunigs/cjrdomp7u10e32snuy4db6299', // stylesheet location
+  center: [10.0, 53.50000], // starting position [lng, lat]
+  zoom: 11,
   maxZoom: 15,
-  attribution: 'Radar data <a href="http://wetterradar.uni-hamburg.de" target="_blank">PATTERN</a>, ' +
-    'Map data &copy; <a href="http://openstreetmap.org" target="_blank">OpenStreetMap</a> contributors, ' +
-    '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-    'Imagery © <a href="http://mapbox.com">Mapbox</a>',
-  id: 'akio.l35p3fje'
-}).addTo(map);
+  maxBounds: [[9.01568100, 53.17], [11.23351900, 54.09236200]],
+  hash: true,
+  pitchWithRotate: false,
+  attributionControl: false
+}).addControl(extraAttribution, 'top-left');
 
-var hash = new L.Hash(map);
+if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+  map.addControl(geolocation, 'top-right');
+}
 
-// new images every 60s, history for two hours
+console.log(map);
+
+var bounds = [
+  [9.01568100, 54.09236200],
+  [11.23351900, 54.09236200],
+  [11.23351900, 53.17102800],
+  [9.01568100, 53.17102800],
+];
+
 var interval = 60;
 var maxImages = 2*60*(60/interval);
 var start = Math.floor(Date.now() / 1000) - maxImages*interval;
 var startIndex = maxImages - 20*(60/interval); // 20 minutes ago
 
-var bounds = [[53.17102800, 9.01568100], [54.09236200, 11.23351900]];
-map.addLayer(L.imageOverlay("/" + filesAll[filesAll.length-1], bounds, {opacity:0.7}));
-map.addLayer(L.imageOverlay("/" + filesZoom[filesZoom.length-1], bounds, {opacity:0.7}));
+var slider = document.getElementById('slider')
+var timestamp = document.getElementById('timestamp')
+slider.max = maxImages-1;
+slider.value = startIndex;
 
-var slider = L.control();
-slider.onAdd = function(map) {
-  this._div = L.DomUtil.create('div', 'slidercont');
-  this._div.innerHTML = '<input id="slider" type="range" min="0" max="'+(maxImages-1)+'" value="'+(startIndex)+'" list="imgs" type="imgs"/><br/><span id="timestamp"></span>'
-  return this._div;
+const paint = {
+  "raster-resampling": "nearest",
+  "raster-fade-duration": 0,
+  "raster-opacity": 0.7,
 }
-slider.addTo(map);
-var div = slider.getContainer();
-//if (!L.Browser.touch) {
-  L.DomEvent.disableClickPropagation(div);
-  L.DomEvent.on(div, 'mousewheel', L.DomEvent.stopPropagation);
-//} else {
-  L.DomEvent.on(div, 'click', L.DomEvent.stopPropagation);
-//}
 
-function replace(layer, new_image) {
-  console.log("Trying to replace: " + layer + " to " + new_image);
-  if(new_image == null || new_image == undefined || new_image == "") return;
+map.on('load', function () {
+  let zoomAdded = false;
+  let allAdded = false;
+  let layerAdder = function(data) {
+    if(data.sourceId === 'zoom' && !zoomAdded) {
+      zoomAdded = true;
+      map.addLayer({
+        "id": "layerZoom",
+        "type": "raster",
+        "source": "zoom",
+        "paint": paint,
 
-  var img = document.querySelector('.leaflet-image-layer[src^="/'+layer+'"]');
-  if(img.src == new_image) return;
-  img.src = new_image;
-}
+      }, 'building');
+    }
+
+    if(data.sourceId === 'all' && !allAdded) {
+      allAdded = true;
+      map.addLayer({
+        "id": "layerAll",
+        "type": "raster",
+        "source": "all",
+        "paint": paint
+      }, 'building');
+    }
+
+    if(allAdded && zoomAdded) { map.off('sourcedata', layerAdder) }
+  };
+
+  map.on('sourcedata', layerAdder);
+
+  map.addSource("zoom", {
+    "type": "image",
+    "url": filesZoom[startIndex],
+    "coordinates": bounds,
+  });
+  map.addSource("all", {
+    "type": "image",
+    "url": filesAll[startIndex],
+    "coordinates": bounds,
+  });
+
+  setTimeout(function() {
+    // set correct "ago"
+    slider.dispatchEvent(new Event('input'));
+    startPlay();
+  }, 0);
+});
+
+map.dragRotate.disable();
+map.touchZoomRotate.disableRotation();
+
 
 function find(array, timestamp) {
   return array.find(function(f) {
@@ -50,38 +108,85 @@ function find(array, timestamp) {
   }) || array[array.length-1];
 }
 
-function allLoaded() {
-  var imgs = document.querySelectorAll('.leaflet-image-layer');
-  return [].slice.call(imgs).every(function(x) { return x.complete });
-}
 
-function showImg(num) {
-  slider.value=num;
-  slider.dispatchEvent(new Event('input'));
-}
-
-var slider = document.getElementById("slider");
-var timestamp = document.getElementById("timestamp");
+var sliderReact = null;
 slider.addEventListener("input", function() {
-  var time = start + interval*slider.value;
-  var ago = Math.floor((new Date()/1000 - time) / 60);
-  timestamp.innerHTML = "~ " + ago + " min ago";
+  if(sliderReact) clearTimeout(sliderReact);
+  sliderReact = setTimeout(function() {
+    var data = findImagesForSliderPos(slider.value);
+    var ago = Math.floor((new Date()/1000 - data.time) / 60);
 
-  replace("all", "/" + find(filesAll, time));
-  replace("zoom", "/" + find(filesZoom, time));
+    preload(data).then(function() {
+      map.getSource("all").updateImage({ url: data.all });
+      map.getSource("zoom").updateImage({ url: data.zoom });
+      timestamp.innerHTML = "~ " + ago + " min ago";
+    })
+  }, 100);
 });
 
-var play = setInterval(function() {
-  if(slider.value == slider.max) {
-    return clearInterval(play);
+function findImagesForSliderPos(position) {
+  var time = start + interval*position;
+  return {all: find(filesAll, time), zoom: find(filesZoom, time), time: time}
+}
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve(src);
+    };
+    img.onerror = () => {
+      console.error(`${src} failed`);
+      resolve(src);
+    };
+    img.src = src;
+  });
+}
+
+function preload(data) {
+  let prAll = loadImage(data.all);
+  let prZoom = loadImage(data.zoom);
+
+  return Promise.all([prAll, prZoom])
+}
+
+function startPlay() {
+  var prevDesired = null;
+  var play = null;
+
+  function start() {
+    console.log("starting")
+    play = setInterval(function() {
+      if(slider.value == slider.max) {
+        return clearInterval(play);
+      }
+
+      var cur = slider.value*1;
+      var desired = cur + 1;
+
+      if(desired == prevDesired) {
+        return
+      }
+
+      prevDesired = desired;
+      var data = findImagesForSliderPos(desired);
+      preload(data).then(function() {
+        // console.log("advancing slider to ", desired)
+        slider.value=desired;
+        slider.dispatchEvent(new Event('input'));
+      });
+    }, 200);
   }
 
-  if(!allLoaded()) return;
+  function stop() {
+    console.log("stopping")
+    clearInterval(play);
+    prevDesired = null;
+  }
 
-  var cur = slider.value*1;
-  showImg(cur + 1);
-}, 200);
 
-slider.addEventListener("mousedown", function() {
-  clearInterval(play);
-})
+  slider.addEventListener("mousedown", stop)
+  slider.addEventListener("touchstart", stop)
+
+  start();
+}
