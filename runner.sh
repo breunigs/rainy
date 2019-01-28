@@ -7,7 +7,7 @@ cd $(dirname $(readlink -f $0))
 suffix="$(date +%s).png"
 
 clean_old() {
-  find *.png -mmin +120 -exec rm {} \; || true
+  find *.png -mmin +120 ! -name "blank.png" -exec rm {} \; || true
   find *.png.webp -mmin +120 -exec rm {} \; || true
   find previous_md5_* -mmin +120 -exec rm {} \; || true
 }
