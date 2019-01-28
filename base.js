@@ -7,7 +7,6 @@ var geolocation = new mapboxgl.GeolocateControl({
   trackUserLocation: true
 });
 
-
 mapboxgl.accessToken = 'pk.eyJ1IjoiYnJldW5pZ3MiLCJhIjoiY2oxdWplZWl3MDA4bjM0bW81dzdtYm55YyJ9.lHUbRUDgmKBgUCQot8PPsw';
 var map = new mapboxgl.Map({
   container: 'map', // container id
@@ -25,6 +24,7 @@ if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(naviga
   map.addControl(geolocation, 'top-right');
 }
 
+var playPause = document.getElementById('play');
 console.log(map);
 
 var bounds = [
@@ -49,6 +49,97 @@ const paint = {
   "raster-fade-duration": 0,
   "raster-opacity": 0.7,
 }
+
+function find(array, timestamp) {
+  return array.find(function(f) {
+    return parseInt(f.substr(-14, 10)) > timestamp;
+  }) || array[array.length-1];
+}
+
+function findImagesForSliderPos(position) {
+  var time = start + interval*position;
+  return {all: find(filesAll, time), zoom: find(filesZoom, time), time: time}
+}
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve(src);
+    };
+    img.onerror = () => {
+      console.error(`${src} failed`);
+      resolve(src);
+    };
+    img.src = src;
+  });
+}
+
+function preload(data) {
+  let prAll = loadImage(data.all);
+  let prZoom = loadImage(data.zoom);
+
+  return Promise.all([prAll, prZoom])
+}
+
+
+var prevDesired = null;
+var play = null;
+var running = false;
+
+
+function playStart() {
+  if(running) return;
+  console.log("starting")
+  running = true;
+  playPause.innerHTML = '⏹';
+  play = setInterval(function() {
+    if(slider.value == slider.max) {
+      return playStop();
+    }
+
+    var cur = slider.value*1;
+    var desired = cur + 1;
+
+    if(desired == prevDesired) {
+      return
+    }
+
+    prevDesired = desired;
+    var data = findImagesForSliderPos(desired);
+    preload(data).then(function() {
+      // console.log("advancing slider to ", desired)
+      slider.value=desired;
+      slider.dispatchEvent(new Event('input'));
+    });
+  }, 200);
+}
+
+function playStop() {
+  if(!running) return;
+
+  console.log("stopping")
+  running = false;
+  clearInterval(play);
+  playPause.innerHTML = '▶';
+  prevDesired = null;
+}
+
+
+function initialPlayStart() {
+  slider.addEventListener("mousedown", playStop)
+  slider.addEventListener("touchstart", playStop)
+
+  playStart();
+}
+
+playPause.addEventListener("click", function() {
+  if(running) {
+    playStop();
+  } else {
+    playStart();
+  }
+});
 
 map.on('load', function () {
   let zoomAdded = false;
@@ -80,7 +171,7 @@ map.on('load', function () {
       setTimeout(function() {
         // set correct "ago"
         slider.dispatchEvent(new Event('input'));
-        startPlay();
+        initialPlayStart();
       }, 0);
     }
   };
@@ -102,14 +193,6 @@ map.on('load', function () {
 map.dragRotate.disable();
 map.touchZoomRotate.disableRotation();
 
-
-function find(array, timestamp) {
-  return array.find(function(f) {
-    return parseInt(f.substr(-14, 10)) > timestamp;
-  }) || array[array.length-1];
-}
-
-
 var sliderReact = null;
 slider.addEventListener("input", function() {
   if(sliderReact) clearTimeout(sliderReact);
@@ -124,70 +207,3 @@ slider.addEventListener("input", function() {
     })
   }, 100);
 });
-
-function findImagesForSliderPos(position) {
-  var time = start + interval*position;
-  return {all: find(filesAll, time), zoom: find(filesZoom, time), time: time}
-}
-
-function loadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve(src);
-    };
-    img.onerror = () => {
-      console.error(`${src} failed`);
-      resolve(src);
-    };
-    img.src = src;
-  });
-}
-
-function preload(data) {
-  let prAll = loadImage(data.all);
-  let prZoom = loadImage(data.zoom);
-
-  return Promise.all([prAll, prZoom])
-}
-
-function startPlay() {
-  var prevDesired = null;
-  var play = null;
-
-  function start() {
-    console.log("starting")
-    play = setInterval(function() {
-      if(slider.value == slider.max) {
-        return clearInterval(play);
-      }
-
-      var cur = slider.value*1;
-      var desired = cur + 1;
-
-      if(desired == prevDesired) {
-        return
-      }
-
-      prevDesired = desired;
-      var data = findImagesForSliderPos(desired);
-      preload(data).then(function() {
-        // console.log("advancing slider to ", desired)
-        slider.value=desired;
-        slider.dispatchEvent(new Event('input'));
-      });
-    }, 200);
-  }
-
-  function stop() {
-    console.log("stopping")
-    clearInterval(play);
-    prevDesired = null;
-  }
-
-
-  slider.addEventListener("mousedown", stop)
-  slider.addEventListener("touchstart", stop)
-
-  start();
-}

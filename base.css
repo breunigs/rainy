@@ -9,7 +9,6 @@ html, body, #map {
 
 .map-overlay {
   pointer-events: none;
-  font:bold 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
   position: absolute;
   width: calc(100% - 20px);
   max-width: 500px;
@@ -30,26 +29,44 @@ html, body, #map {
 
 .map-overlay label {
   display: block;
-  margin: 0 0 10px;
   text-align: center;
+  height: 25px;
+  font:bold 12px/20px sans-serif;
 }
 
 .map-overlay input {
   background-color: transparent;
   display: inline-block;
-  width: 100%;
+  width: calc(100% - 70px - 13.8px);
   position: relative;
   margin: 0;
   cursor: ew-resize;
 }
 
-input {
+.map-overlay button {
+  background-color: #E6E6E6;
+  border-radius: 2px;
+  border: 1px solid #999;
+  color: #000;
+  font-size: 30px;
+  padding: 3.75px 7.5px;
+  text-decoration: none;
+  width: 50px;
+  height: 50px;
+}
+
+input, button {
   pointer-events: auto;
+}
+
+.buttonwrapper {
+  width: 70px;
+  display: inline-block;
 }
 
 input[type=range] {
   -webkit-appearance: none;
-  width: 100%;
+  width: calc(100% - 70px - 13.8px);
   margin: 13.8px 0;
 }
 input[type=range]:focus {
