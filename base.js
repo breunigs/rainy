@@ -75,27 +75,28 @@ map.on('load', function () {
       }, 'building');
     }
 
-    if(allAdded && zoomAdded) { map.off('sourcedata', layerAdder) }
+    if(allAdded && zoomAdded) {
+      map.off('sourcedata', layerAdder)
+      setTimeout(function() {
+        // set correct "ago"
+        slider.dispatchEvent(new Event('input'));
+        startPlay();
+      }, 0);
+    }
   };
 
   map.on('sourcedata', layerAdder);
 
   map.addSource("zoom", {
     "type": "image",
-    "url": filesZoom[startIndex],
+    "url": filesZoom[startIndex] || '/blank.png',
     "coordinates": bounds,
   });
   map.addSource("all", {
     "type": "image",
-    "url": filesAll[startIndex],
+    "url": filesAll[startIndex] || '/blank.png',
     "coordinates": bounds,
   });
-
-  setTimeout(function() {
-    // set correct "ago"
-    slider.dispatchEvent(new Event('input'));
-    startPlay();
-  }, 0);
 });
 
 map.dragRotate.disable();
