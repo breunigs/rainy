@@ -205,5 +205,5 @@ slider.addEventListener("input", function() {
       map.getSource("zoom").updateImage({ url: data.zoom });
       timestamp.innerHTML = "~ " + ago + " min ago";
     })
-  }, 100);
+  }, 10);
 });
